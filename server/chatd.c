@@ -20,20 +20,39 @@ Project 3 - P2P Chat Server
 
 #define DPORT 3490
 #define BUFSIZE 4096
+#define MAX_CLIENTS 20
+
+struct client{
+
+	struct sockaddr_in addr;
+	char *group;
+	char *username;
+
+};
 
 int main(int argc, char *argv[]){
 
-	// initialize
+	// kinda temporary, want to do a list eventually but
+	// i'll add that after we make sure everything else
+	// works
+	struct client client_list[MAX_CLIENTS];
+	int i;
+	for(i = 0; i < MAX_CLIENTS; i++){
+		client_list[i].addr.sin_family = AF_INET;
+		client_list[i].username = "NULL";
+		client_list[i].group = "NULL";
+	}
 
+	// initialize network stuff
+	
 	int sockfd;
-	int port = DPORT;
 	char recvBuffer[BUFSIZE];
 	int recvlen;
 	
+	int port = DPORT;
+	
 	struct sockaddr_in clientAddr, serverAddr;
 	socklen_t len = sizeof(clientAddr);
-	int r;
-	int yes = 1;
 	
 	#ifdef DEBUG
 		printf("Opening socket...\n");
@@ -55,6 +74,7 @@ int main(int argc, char *argv[]){
 		return 0;
 	}
 
+	// loop indefinitely
 	while(1){
 	
 		// begin listening for connections
@@ -64,11 +84,12 @@ int main(int argc, char *argv[]){
 		}
 		recvBuffer[recvlen] = 0;
 	
-		// if a client connects, save their info
-		
-	
 		// send client list of groups
-	
+		for(i = 0; i < MAX_CLIENTS; i++){
+			if(client_list[i].group != "NULL"){
+				// add to list of groups to send
+			}
+		}
 	
 		// wait for response
 	
@@ -77,6 +98,9 @@ int main(int argc, char *argv[]){
 	
 	
 		// disconnect and wait for new connection
+		
+		
+		// save this new client
 	
 	
 	}
