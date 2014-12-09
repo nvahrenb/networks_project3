@@ -36,7 +36,7 @@ int main(int argc, char *argv[]){
 	// i'll add that after we make sure everything else
 	// works
 	struct client client_list[MAX_CLIENTS];
-	int i;
+	int i, j;
 	for(i = 0; i < MAX_CLIENTS; i++){
 		client_list[i].addr.sin_family = AF_INET;
 		client_list[i].username = "NULL";
@@ -78,30 +78,78 @@ int main(int argc, char *argv[]){
 	while(1){
 	
 		// begin listening for connections
-		if((recvlen = recvfrom(sockfd,recvBuffer,BUFSIZE,0,(struct sockaddr *)&clientAddr,&len)) < 0){
-			perror("unable to receive message");
-			return 0;
-		}
+		recvlen = recvfrom(sockfd,recvBuffer,BUFSIZE,0,(struct sockaddr *)&clientAddr, &len);
 		recvBuffer[recvlen] = 0;
+		
+		if(recvBuffer[0] == 'J'){
+		// join request
 	
-		// send client list of groups
-		for(i = 0; i < MAX_CLIENTS; i++){
-			if(client_list[i].group != "NULL"){
-				// add to list of groups to send
+			// send client list of groups
+			char *newGroup;
+			char *toSend;
+			char *newUser;
+			
+			for(i = 0; i < MAX_CLIENTS; i++){
+				if(client_list[i].group != "NULL"){
+					strcpy(toSend, "G:");
+					// format "G:group1:group2:group3::
+					strcat(toSend, client_list[i].group);
+					strcat(toSend, ":");
+				}
 			}
+			strcat(toSend, ":");
+			sendto(sockfd, toSend, strlen(toSend), 0, (struct sockaddr *)&clientAddr, sizeof(struct sockaddr *));
+	
+			// wait for response
+			// string format J:group:username::
+			int recvlen = recvfrom(sockfd, recvBuffer, BUFSIZE, 0, (struct sockaddr *)&clientAddr, &len);
+			recvBuffer[recvlen] = 0;
+				
+			// determine what group the user requested
+			for(i = 2, j = 0; recvBuffer[i] != ':'; i++, j++){
+				newGroup[j] = recvBuffer[i];
+			}
+		
+			// get username
+			i++;
+			
+			for(j = 0; recvBuffer[i] != ':'; i++, j++){
+				newUser[j] = recvBuffer[i];
+			}
+		
+			// send client list of others in group
+			for(i = 0; i < MAX_CLIENTS; i++){
+				if(client_list[i].group != "NULL" && client_list[i].group == newGroup){
+					// send other host's address info
+				}
+			}
+	
+	
+			// save this new client
+			i = 0;
+			while(client_list[i].group == "NULL"){
+				i++;
+			}
+		
+			client_list[i].addr.sin_addr.s_addr = clientAddr.sin_addr.s_addr;
+			client_list[i].addr.sin_port = clientAddr.sin_port;
+			client_list[i].username = newUser;
+			client_list[i].group = newGroup;
+	
+		// end join	
+		}else if(recvBuffer[0] == 'D'){
+			// disconnect request
+		
+			i = 0;
+			while(client_list[i].addr.sin_addr.s_addr != clientAddr.sin_addr.s_addr){
+				i++;
+			}
+			
+			client_list[i].username = "NULL";
+			client_list[i].group = "NULL";
+		
+		// end disconnect
 		}
-	
-		// wait for response
-	
-	
-		// send client list of others in group
-	
-	
-		// disconnect and wait for new connection
 		
-		
-		// save this new client
-	
-	
 	}
 }
