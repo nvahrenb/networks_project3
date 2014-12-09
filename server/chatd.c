@@ -18,7 +18,7 @@ Project 3 - P2P Chat Server
 #include <netdb.h>
 #include <arpa/inet.h>
 
-#define DPORT 3490
+#define DPORT 9765
 #define BUFSIZE 4096
 #define MAX_CLIENTS 20
 
@@ -52,6 +52,10 @@ int main(int argc, char *argv[]){
 	
 	int port = DPORT;
 	
+	if(argc >= 2){
+		port = atoi(argv[1]);
+	}
+	
 	struct sockaddr_in clientAddr, serverAddr;
 	socklen_t len = sizeof(clientAddr);
 	
@@ -78,17 +82,23 @@ int main(int argc, char *argv[]){
 	// loop indefinitely
 	while(1){
 	
+	#ifdef DEBUG
+		printf("Listening for connections...\n");
+	#endif
+	
 		// begin listening for connections
 		recvlen = recvfrom(sockfd,recvBuffer,BUFSIZE,0,(struct sockaddr *)&clientAddr, &len);
 		recvBuffer[recvlen] = 0;
 		
+		#ifdef DEBUG
+			printf("Received request:\n");
+			fputs(recvBuffer, stdout);
+		#endif
+		
 		if(recvBuffer[0] == 'L'){
 		// list request
 	
-			// send client list of groups
-			char *newGroup = malloc(16*sizeof(char));
-			char *newUser = malloc(16*sizeof(char));
-			
+			// send client list of groups			
 			for(i = 0; i < MAX_CLIENTS; i++){
 				if(client_list[i].group != "NULL"){
 					strcpy(sendBuffer, "G:");
@@ -98,11 +108,17 @@ int main(int argc, char *argv[]){
 				}
 			}
 			strcat(sendBuffer, ":");
+			#ifdef DEBUG
+				printf("Sending response:\n");
+				fputs(sendBuffer, stdout);
+			#endif
 			sendto(sockfd, sendBuffer, strlen(sendBuffer), 0, (struct sockaddr *)&clientAddr, sizeof(struct sockaddr *));
 		// end list
 		}else if(recvBuffer[0] == 'J'){
 			//join request
 			// string format J:group:username::
+			char *newGroup = malloc(16*sizeof(char));
+			char *newUser = malloc(16*sizeof(char));
 			int recvlen = recvfrom(sockfd, recvBuffer, BUFSIZE, 0, (struct sockaddr *)&clientAddr, &len);
 			recvBuffer[recvlen] = 0;
 				
@@ -136,6 +152,10 @@ int main(int argc, char *argv[]){
 				}
 			}
 			strcat(sendBuffer, ":");
+			#ifdef DEBUG
+				printf("Sending response:\n");
+				fputs(sendBuffer, stdout);
+			#endif
 			sendto(sockfd, sendBuffer, strlen(sendBuffer), 0, (struct sockaddr *)&clientAddr, sizeof(struct sockaddr *));
 			
 	
@@ -165,6 +185,8 @@ int main(int argc, char *argv[]){
 			
 			client_list[i].username = "NULL";
 			client_list[i].group = "NULL";
+			
+			// need to notify all clients about disconnect
 		
 		// end disconnect
 		}

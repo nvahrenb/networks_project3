@@ -39,7 +39,7 @@ Project 3 - P2P Chat Client
 #include <netdb.h>
 #include <arpa/inet.h>
 
-#define DPORT 3490
+#define DPORT 9765
 #define BUFSIZE 4096
 #define MAX_CLIENTS 20
 
@@ -72,6 +72,10 @@ int main(int argc, char *argv[]){
 	int recvlen;
 	
 	int port = DPORT;
+	
+	#ifdef DEBUG
+		printf("Opening socket...\n");
+	#endif
 	
 	struct sockaddr_in serverAddr, clientAddr;
 	socklen_t len = sizeof(clientAddr);
@@ -111,13 +115,25 @@ int main(int argc, char *argv[]){
 	serverAddr.sin_port = htons(port);
 	memcpy((void *)&serverAddr.sin_addr, hostn->h_addr_list[0], hostn->h_length);
 	
+	#ifdef DEBUG
+		printf("Connecting to server at %s (%s) on port %d\n",argv[1],inet_ntoa(serverAddr.sin_addr),port);
+	#endif
+	
 	// request list from server
 	strcpy(sendBuffer,"L:");
+	#ifdef DEBUG
+		printf("Sending to server:\n");
+		fputs(sendBuffer, stdout);
+	#endif
 	sendto(sockfd, sendBuffer, strlen(sendBuffer), 0, (struct sockaddr *)&serverAddr, sizeof(struct sockaddr *));
 	
 	// listen for response - list of groups
 	recvlen = recvfrom(sockfd, recvBuffer, BUFSIZE, 0, (struct sockaddr *)&clientAddr, &len);
 	recvBuffer[recvlen] = 0;
+	#ifdef DEBUG
+		printf("Received response:\n");
+		fputs(recvBuffer, stdout);
+	#endif
 	
 	// parse response and print to screen
 	printf("Current groups:\n");
@@ -148,12 +164,20 @@ int main(int argc, char *argv[]){
 	sendBuffer[j+1] = ':';
 	
 	// request join
+	#ifdef DEBUG
+		printf("Sending to server:\n");
+		fputs(sendBuffer, stdout);
+	#endif
 	sendto(sockfd, sendBuffer, strlen(sendBuffer), 0, (struct sockaddr *)&serverAddr, sizeof(struct sockaddr *));
 	
 	
 	// listen for response
 	recvlen = recvfrom(sockfd, recvBuffer, BUFSIZE, 0, (struct sockaddr *)&clientAddr, &len);
 	recvBuffer[recvlen] = 0;
+	#ifdef DEBUG
+		printf("Received response:\n");
+		fputs(sendBuffer, stdout);
+	#endif
 	
 	// save list of clients
 	i = 0; j = 2;
@@ -164,28 +188,31 @@ int main(int argc, char *argv[]){
 			i++;
 		}
 		
-		int k = 0;
-		for(; recvBuffer[j] != ':'; j++){
+		// save username
+		int k;
+		for(k = 0; recvBuffer[j] != ':'; j++, k++){
 			temp[k] = recvBuffer[j];
 		}
 		strcpy(client_list[i].username, temp);
 		memset((char *)&temp, 0, sizeof(temp));
 		
-		k = 0;
-		for(; recvBuffer[j] != ':'; j++){
+		// save address
+		for(k = 0; recvBuffer[j] != ':'; j++, k++){
 			temp[k] = recvBuffer[j];
 		}
 		inet_aton(temp, &client_list[i].addr.sin_addr);
 		memset((char *)&temp, 0, sizeof(temp));
 		
-		k = 0;
-		for(; recvBuffer[j] != ':'; j++){
+		// save port
+		for(k = 0; recvBuffer[j] != ':'; j++, k++){
 			temp[k] = recvBuffer[j];
 		}
 		client_list[i].addr.sin_port = atoi(temp);
 		memset((char *)&temp, 0, sizeof(temp));
 	}
 	free(temp);
+	
+	printf("end");
 
 	// notify other clients that this user has joined
 	
