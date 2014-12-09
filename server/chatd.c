@@ -47,6 +47,7 @@ int main(int argc, char *argv[]){
 	
 	int sockfd;
 	char recvBuffer[BUFSIZE];
+	char sendBuffer[BUFSIZE];
 	int recvlen;
 	
 	int port = DPORT;
@@ -81,26 +82,26 @@ int main(int argc, char *argv[]){
 		recvlen = recvfrom(sockfd,recvBuffer,BUFSIZE,0,(struct sockaddr *)&clientAddr, &len);
 		recvBuffer[recvlen] = 0;
 		
-		if(recvBuffer[0] == 'J'){
-		// join request
+		if(recvBuffer[0] == 'L'){
+		// list request
 	
 			// send client list of groups
 			char *newGroup = malloc(16*sizeof(char));
-			char toSend[4096];
 			char *newUser = malloc(16*sizeof(char));
 			
 			for(i = 0; i < MAX_CLIENTS; i++){
 				if(client_list[i].group != "NULL"){
-					strcpy(toSend, "G:");
+					strcpy(sendBuffer, "G:");
 					// format "G:group1:group2:group3::
-					strcat(toSend, client_list[i].group);
-					strcat(toSend, ":");
+					strcat(sendBuffer, client_list[i].group);
+					strcat(sendBuffer, ":");
 				}
 			}
-			strcat(toSend, ":");
-			sendto(sockfd, toSend, strlen(toSend), 0, (struct sockaddr *)&clientAddr, sizeof(struct sockaddr *));
-	
-			// wait for response
+			strcat(sendBuffer, ":");
+			sendto(sockfd, sendBuffer, strlen(sendBuffer), 0, (struct sockaddr *)&clientAddr, sizeof(struct sockaddr *));
+		// end list
+		}else if(recvBuffer[0] == 'J'){
+			//join request
 			// string format J:group:username::
 			int recvlen = recvfrom(sockfd, recvBuffer, BUFSIZE, 0, (struct sockaddr *)&clientAddr, &len);
 			recvBuffer[recvlen] = 0;
@@ -118,24 +119,24 @@ int main(int argc, char *argv[]){
 			}
 		
 			// send client list of others in group
-			strcpy(toSend, "C:");
+			strcpy(sendBuffer, "C:");
 			for(i = 0; i < MAX_CLIENTS; i++){
 				if(client_list[i].group != "NULL" && client_list[i].group == newGroup){
 					// send other clients' address info
 					// format: C:c1_username:c1_address:c1_port:c2_hostname...cn_port::
-					strcat(toSend, client_list[i].username);
-					strcat(toSend, ":");
-					strcat(toSend, inet_ntoa(client_list[i].addr.sin_addr));
-					strcat(toSend, ":");
+					strcat(sendBuffer, client_list[i].username);
+					strcat(sendBuffer, ":");
+					strcat(sendBuffer, inet_ntoa(client_list[i].addr.sin_addr));
+					strcat(sendBuffer, ":");
 					char *temp = malloc(6*sizeof(char));
 					sprintf(temp,"%d",client_list[i].addr.sin_port);
-					strcat(toSend, temp);
-					strcat(toSend, ":");
+					strcat(sendBuffer, temp);
+					strcat(sendBuffer, ":");
 					free(temp);
 				}
 			}
-			strcat(toSend, ":");
-			sendto(sockfd, toSend, strlen(toSend), 0, (struct sockaddr *)&clientAddr, sizeof(struct sockaddr *));
+			strcat(sendBuffer, ":");
+			sendto(sockfd, sendBuffer, strlen(sendBuffer), 0, (struct sockaddr *)&clientAddr, sizeof(struct sockaddr *));
 			
 	
 	
