@@ -85,9 +85,9 @@ int main(int argc, char *argv[]){
 		// join request
 	
 			// send client list of groups
-			char *newGroup;
-			char *toSend;
-			char *newUser;
+			char *newGroup = malloc(16*sizeof(char));
+			char toSend[4096];
+			char *newUser = malloc(16*sizeof(char));
 			
 			for(i = 0; i < MAX_CLIENTS; i++){
 				if(client_list[i].group != "NULL"){
@@ -118,11 +118,25 @@ int main(int argc, char *argv[]){
 			}
 		
 			// send client list of others in group
+			strcpy(toSend, "C:");
 			for(i = 0; i < MAX_CLIENTS; i++){
 				if(client_list[i].group != "NULL" && client_list[i].group == newGroup){
-					// send other host's address info
+					// send other clients' address info
+					// format: C:c1_username:c1_address:c1_port:c2_hostname...cn_port::
+					strcat(toSend, client_list[i].username);
+					strcat(toSend, ":");
+					strcat(toSend, inet_ntoa(client_list[i].addr.sin_addr));
+					strcat(toSend, ":");
+					char *temp = malloc(6*sizeof(char));
+					sprintf(temp,"%d",client_list[i].addr.sin_port);
+					strcat(toSend, temp);
+					strcat(toSend, ":");
+					free(temp);
 				}
 			}
+			strcat(toSend, ":");
+			sendto(sockfd, toSend, strlen(toSend), 0, (struct sockaddr *)&clientAddr, sizeof(struct sockaddr *));
+			
 	
 	
 			// save this new client
@@ -135,6 +149,9 @@ int main(int argc, char *argv[]){
 			client_list[i].addr.sin_port = clientAddr.sin_port;
 			client_list[i].username = newUser;
 			client_list[i].group = newGroup;
+	
+		free(newGroup);
+		free(newUser);
 	
 		// end join	
 		}else if(recvBuffer[0] == 'D'){

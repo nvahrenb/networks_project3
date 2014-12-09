@@ -23,7 +23,7 @@ Project 3 - P2P Chat Client
 // format "J:groupname:username::"
 
 // receive arbitrary number of other clients
-// format undecided
+// format: C:c1_username:c1_address:c1_port:c2_hostname...cn_port::
 
 // send message to other clients that you have joined the group
 // format undecided
