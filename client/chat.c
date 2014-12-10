@@ -1,9 +1,7 @@
 /*
 Chris Ray
 Nathan Vahrenberg
-
 CSE30264 - Computer Networks
-
 Project 3 - P2P Chat Client
 */
 
@@ -59,8 +57,7 @@ int main(int argc, char *argv[]){
 	int i, j;
 	for(i = 0; i < MAX_CLIENTS; i++){
 		client_list[i].addr.sin_family = AF_INET;
-		client_list[i].username = "NULL";
-		client_list[i].group = "NULL";
+		strcpy(client_list[i].username, "EMPTY");
 	}
 	
 	// initialize network stuff
@@ -178,22 +175,27 @@ int main(int argc, char *argv[]){
 	
 	// save list of clients
 	i = 0; j = 1;
-	char *temp = malloc(16*sizeof(char));
+	char temp[16];
 	memset((char *)&temp, 0, sizeof(temp));
 	while(recvBuffer[j] != ':' || recvBuffer[j+1] != ':'){
-		while(client_list[i].username == "NULL"){
+		printf("%s\n",client_list[i].username);
+		while(strcmp(client_list[i].username, "EMPTY") != 0){
 			i++;
 		}
-		
+
 		// save username
 		int k;
+		j++;
 		for(k = 0; recvBuffer[j] != ':'; j++, k++){
 			temp[k] = recvBuffer[j];
 		}
 		strcpy(client_list[i].username, temp);
+		printf("%s\n",client_list[i].username);
+		printf("%s\n\n",temp);
 		memset((char *)&temp, 0, sizeof(temp));
 		
 		// save address
+		j++;
 		for(k = 0; recvBuffer[j] != ':'; j++, k++){
 			temp[k] = recvBuffer[j];
 		}
@@ -201,13 +203,25 @@ int main(int argc, char *argv[]){
 		memset((char *)&temp, 0, sizeof(temp));
 		
 		// save port
+		j++;
 		for(k = 0; recvBuffer[j] != ':'; j++, k++){
 			temp[k] = recvBuffer[j];
 		}
 		client_list[i].addr.sin_port = atoi(temp);
 		memset((char *)&temp, 0, sizeof(temp));
 	}
-	free(temp);
+	
+	#ifdef DEBUG
+		printf("Other clients in group:\n");
+		for(i = 0; i < MAX_CLIENTS; i++){
+			if(strcmp(client_list[i].username, "EMPTY") != 0){
+				printf("%s    %s:%d\n",
+				client_list[i].username,
+				inet_ntoa(client_list[i].addr.sin_addr),
+				client_list[i].addr.sin_port);
+			}
+		}
+	#endif
 	
 	printf("end\n");
 
