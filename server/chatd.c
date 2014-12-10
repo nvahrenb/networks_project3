@@ -83,49 +83,59 @@ int main(int argc, char *argv[]){
 	while(1){
 	
 	#ifdef DEBUG
-		printf("Listening for connections...\n");
+		printf("Listening for connections on port %d\n",port);
 	#endif
 	
 		// begin listening for connections
+		memset((char *)&recvBuffer, 0, sizeof(recvBuffer));
 		recvlen = recvfrom(sockfd,recvBuffer,BUFSIZE,0,(struct sockaddr *)&clientAddr, &len);
 		recvBuffer[recvlen] = 0;
 		
 		#ifdef DEBUG
-			printf("Received request:\n");
-			fputs(recvBuffer, stdout);
+			printf("Received request: %s from %s\n",recvBuffer, inet_ntoa(clientAddr.sin_addr));
 		#endif
 		
 		if(recvBuffer[0] == 'L'){
 		// list request
+		#ifdef DEBUG
+			printf("Client requested group list\n");
+		#endif
 	
-			// send client list of groups			
+			// send client list of groups
+			// format "G:group1:group2:group3::
+			strcpy(sendBuffer, "G:");			
 			for(i = 0; i < MAX_CLIENTS; i++){
 				if(client_list[i].group != "NULL"){
-					strcpy(sendBuffer, "G:");
-					// format "G:group1:group2:group3::
 					strcat(sendBuffer, client_list[i].group);
 					strcat(sendBuffer, ":");
 				}
 			}
 			strcat(sendBuffer, ":");
 			#ifdef DEBUG
-				printf("Sending response:\n");
-				fputs(sendBuffer, stdout);
+				printf("Sending response: %s to %s\n",sendBuffer, inet_ntoa(clientAddr.sin_addr));
 			#endif
-			sendto(sockfd, sendBuffer, strlen(sendBuffer), 0, (struct sockaddr *)&clientAddr, sizeof(struct sockaddr *));
+			sendto(sockfd, sendBuffer, strlen(sendBuffer), 0, (struct sockaddr *)&clientAddr, sizeof(clientAddr));
 		// end list
+		
+		
+		
 		}else if(recvBuffer[0] == 'J'){
 			//join request
+			#ifdef DEBUG
+				printf("Client requested to join ");
+			#endif
 			// string format J:group:username::
 			char *newGroup = malloc(16*sizeof(char));
 			char *newUser = malloc(16*sizeof(char));
-			int recvlen = recvfrom(sockfd, recvBuffer, BUFSIZE, 0, (struct sockaddr *)&clientAddr, &len);
-			recvBuffer[recvlen] = 0;
 				
 			// determine what group the user requested
 			for(i = 2, j = 0; recvBuffer[i] != ':'; i++, j++){
 				newGroup[j] = recvBuffer[i];
 			}
+			
+			#ifdef DEBUG
+				printf("%s as ",newGroup);
+			#endif
 		
 			// get username
 			i++;
@@ -133,6 +143,12 @@ int main(int argc, char *argv[]){
 			for(j = 0; recvBuffer[i] != ':'; i++, j++){
 				newUser[j] = recvBuffer[i];
 			}
+			
+			#ifdef DEBUG
+				printf("%s\n",newUser);
+			#endif
+			
+			
 		
 			// send client list of others in group
 			strcpy(sendBuffer, "C:");
@@ -153,10 +169,9 @@ int main(int argc, char *argv[]){
 			}
 			strcat(sendBuffer, ":");
 			#ifdef DEBUG
-				printf("Sending response:\n");
-				fputs(sendBuffer, stdout);
+				printf("Sending response: %s\n",sendBuffer);
 			#endif
-			sendto(sockfd, sendBuffer, strlen(sendBuffer), 0, (struct sockaddr *)&clientAddr, sizeof(struct sockaddr *));
+			sendto(sockfd, sendBuffer, strlen(sendBuffer), 0, (struct sockaddr *)&clientAddr, sizeof(clientAddr));
 			
 	
 	
@@ -174,9 +189,15 @@ int main(int argc, char *argv[]){
 		free(newGroup);
 		free(newUser);
 	
-		// end join	
+		// end join
+		
+		
+		
 		}else if(recvBuffer[0] == 'D'){
 			// disconnect request
+			#ifdef DEBUG
+				printf("Client requested to disconnect");
+			#endif
 		
 			i = 0;
 			while(client_list[i].addr.sin_addr.s_addr != clientAddr.sin_addr.s_addr){
@@ -189,6 +210,8 @@ int main(int argc, char *argv[]){
 			// need to notify all clients about disconnect
 		
 		// end disconnect
+		}else{
+			printf("Unknown command: %s",recvBuffer);
 		}
 		
 	}

@@ -70,7 +70,6 @@ int main(int argc, char *argv[]){
 	char recvBuffer[BUFSIZE];
 	char sendBuffer[BUFSIZE];
 	int recvlen;
-	
 	int port = DPORT;
 	
 	#ifdef DEBUG
@@ -78,7 +77,7 @@ int main(int argc, char *argv[]){
 	#endif
 	
 	struct sockaddr_in serverAddr, clientAddr;
-	socklen_t len = sizeof(clientAddr);
+	socklen_t len = sizeof(serverAddr);
 	
 	// open socket
 	if( (sockfd = socket(AF_INET, SOCK_DGRAM, 0)) < 0){
@@ -122,17 +121,18 @@ int main(int argc, char *argv[]){
 	// request list from server
 	strcpy(sendBuffer,"L:");
 	#ifdef DEBUG
-		printf("Sending to server:\n");
-		fputs(sendBuffer, stdout);
+		printf("Sending to server: %s\n",sendBuffer);
 	#endif
-	sendto(sockfd, sendBuffer, strlen(sendBuffer), 0, (struct sockaddr *)&serverAddr, sizeof(struct sockaddr *));
+	int sentBytes = sendto(sockfd, sendBuffer, strlen(sendBuffer), 0, (struct sockaddr *)&serverAddr, sizeof(serverAddr));
+	#ifdef DEBUG
+		printf("Sent %d bytes\n",sentBytes);
+	#endif
 	
 	// listen for response - list of groups
-	recvlen = recvfrom(sockfd, recvBuffer, BUFSIZE, 0, (struct sockaddr *)&clientAddr, &len);
+	recvlen = recvfrom(sockfd, recvBuffer, BUFSIZE, 0, (struct sockaddr *)&serverAddr, &len);
 	recvBuffer[recvlen] = 0;
 	#ifdef DEBUG
-		printf("Received response:\n");
-		fputs(recvBuffer, stdout);
+		printf("Received response: %s\n",recvBuffer);
 	#endif
 	
 	// parse response and print to screen
@@ -146,18 +146,21 @@ int main(int argc, char *argv[]){
 	}
 	// get user input
 	char input[64];
-	scanf("%s",input);
+	printf("Usage: join group username\n > ");
+	fgets (input, 64, stdin);
+	printf("input: %s\n",input);
 	strcpy(sendBuffer, "J:");
 	i = 0;
 	while(input[i] != ' '){
 		i++;
 	}
+	i++;
 	for(j = 2; input[i] != ' '; i++, j++){
 		sendBuffer[j] = input[i];
 	}
 	sendBuffer[j] = ':';
 	i++; j++;
-	for(; input[i] && input[i] != ' '; i++, j++){
+	for(; input[i] && input[i] != ' ' && input[i] != '\n'; i++, j++){
 		sendBuffer[j] = input[i];
 	}
 	sendBuffer[j] = ':';
@@ -165,18 +168,16 @@ int main(int argc, char *argv[]){
 	
 	// request join
 	#ifdef DEBUG
-		printf("Sending to server:\n");
-		fputs(sendBuffer, stdout);
+		printf("Sending to server: %s\n",sendBuffer);
 	#endif
-	sendto(sockfd, sendBuffer, strlen(sendBuffer), 0, (struct sockaddr *)&serverAddr, sizeof(struct sockaddr *));
+	sendto(sockfd, sendBuffer, strlen(sendBuffer), 0, (struct sockaddr *)&serverAddr, sizeof(serverAddr));
 	
 	
 	// listen for response
-	recvlen = recvfrom(sockfd, recvBuffer, BUFSIZE, 0, (struct sockaddr *)&clientAddr, &len);
+	recvlen = recvfrom(sockfd, recvBuffer, BUFSIZE, 0, (struct sockaddr *)&clientAddr, &recvlen);
 	recvBuffer[recvlen] = 0;
 	#ifdef DEBUG
-		printf("Received response:\n");
-		fputs(sendBuffer, stdout);
+		printf("Received response: %s\n", recvBuffer);
 	#endif
 	
 	// save list of clients
