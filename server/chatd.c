@@ -25,8 +25,8 @@ Project 3 - P2P Chat Server
 struct client{
 
 	struct sockaddr_in addr;
-	char *group;
-	char *username;
+	char group[16];
+	char username[16];
 
 };
 
@@ -39,8 +39,10 @@ int main(int argc, char *argv[]){
 	int i, j;
 	for(i = 0; i < MAX_CLIENTS; i++){
 		client_list[i].addr.sin_family = AF_INET;
-		client_list[i].username = "NULL";
-		client_list[i].group = "NULL";
+		client_list[i].addr.sin_addr.s_addr = htonl(INADDR_ANY);
+		client_list[i].addr.sin_port = DPORT;
+		strcpy(client_list[i].username, "NULL");;
+		strcpy(client_list[i].group, "NULL");
 	}
 
 	// initialize network stuff
@@ -82,14 +84,16 @@ int main(int argc, char *argv[]){
 	// loop indefinitely
 	while(1){
 	
-	#ifdef DEBUG
-		printf("Listening for connections on port %d\n",port);
-	#endif
+		#ifdef DEBUG
+			printf("Listening for connections on port %d\n",serverAddr.sin_port);
+		#endif
 	
 		// begin listening for connections
 		memset((char *)&recvBuffer, 0, sizeof(recvBuffer));
+		memset((char *)&clientAddr, 0, sizeof(clientAddr));
 		recvlen = recvfrom(sockfd,recvBuffer,BUFSIZE,0,(struct sockaddr *)&clientAddr, &len);
 		recvBuffer[recvlen] = 0;
+		perror("recvfrom");
 		
 		#ifdef DEBUG
 			printf("Received request: %s from %s\n",recvBuffer, inet_ntoa(clientAddr.sin_addr));
@@ -105,7 +109,7 @@ int main(int argc, char *argv[]){
 			// format "G:group1:group2:group3::
 			strcpy(sendBuffer, "G:");			
 			for(i = 0; i < MAX_CLIENTS; i++){
-				if(client_list[i].group != "NULL"){
+				if(strcmp(client_list[i].group, "NULL") != 0){
 					strcat(sendBuffer, client_list[i].group);
 					strcat(sendBuffer, ":");
 				}
@@ -153,9 +157,10 @@ int main(int argc, char *argv[]){
 			// send client list of others in group
 			strcpy(sendBuffer, "C:");
 			for(i = 0; i < MAX_CLIENTS; i++){
-				if(client_list[i].group != "NULL" && client_list[i].group == newGroup){
+				if(strcmp(client_list[i].group, "NULL") != 0 && strcmp(client_list[i].group, newGroup) == 0){
 					// send other clients' address info
 					// format: C:c1_username:c1_address:c1_port:c2_hostname...cn_port::
+					printf("shouldn't see this\n");
 					strcat(sendBuffer, client_list[i].username);
 					strcat(sendBuffer, ":");
 					strcat(sendBuffer, inet_ntoa(client_list[i].addr.sin_addr));
@@ -176,15 +181,18 @@ int main(int argc, char *argv[]){
 	
 	
 			// save this new client
+			#ifdef DEBUG
+				printf("Adding %s at %s:%d to %s\n",newUser,inet_ntoa(clientAddr.sin_addr),clientAddr.sin_port,newGroup);
+			#endif
 			i = 0;
-			while(client_list[i].group == "NULL"){
+			while(strcmp(client_list[i].group, "NULL") != 0){
 				i++;
 			}
-		
 			client_list[i].addr.sin_addr.s_addr = clientAddr.sin_addr.s_addr;
-			client_list[i].addr.sin_port = clientAddr.sin_port;
-			client_list[i].username = newUser;
-			client_list[i].group = newGroup;
+			int temp_port = clientAddr.sin_port;
+			client_list[i].addr.sin_port = temp_port;
+			strcpy(client_list[i].username, newUser);
+			strcpy(client_list[i].group, newGroup);
 	
 		free(newGroup);
 		free(newUser);
@@ -204,14 +212,15 @@ int main(int argc, char *argv[]){
 				i++;
 			}
 			
-			client_list[i].username = "NULL";
-			client_list[i].group = "NULL";
+			strcpy(client_list[i].username, "NULL");
+			strcpy(client_list[i].group, "NULL");
 			
 			// need to notify all clients about disconnect
 		
 		// end disconnect
 		}else{
-			printf("Unknown command: %s",recvBuffer);
+			printf("Unknown command: %s\n",recvBuffer);
+			sleep(5);
 		}
 		
 	}

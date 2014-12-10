@@ -124,9 +124,6 @@ int main(int argc, char *argv[]){
 		printf("Sending to server: %s\n",sendBuffer);
 	#endif
 	int sentBytes = sendto(sockfd, sendBuffer, strlen(sendBuffer), 0, (struct sockaddr *)&serverAddr, sizeof(serverAddr));
-	#ifdef DEBUG
-		printf("Sent %d bytes\n",sentBytes);
-	#endif
 	
 	// listen for response - list of groups
 	recvlen = recvfrom(sockfd, recvBuffer, BUFSIZE, 0, (struct sockaddr *)&serverAddr, &len);
@@ -181,7 +178,7 @@ int main(int argc, char *argv[]){
 	#endif
 	
 	// save list of clients
-	i = 0; j = 2;
+	i = 0; j = 1;
 	char *temp = malloc(16*sizeof(char));
 	memset((char *)&temp, 0, sizeof(temp));
 	while(recvBuffer[j] != ':' || recvBuffer[j+1] != ':'){
@@ -213,7 +210,7 @@ int main(int argc, char *argv[]){
 	}
 	free(temp);
 	
-	printf("end");
+	printf("end\n");
 
 	// notify other clients that this user has joined
 	
