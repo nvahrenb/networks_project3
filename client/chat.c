@@ -46,8 +46,7 @@ Project 3 - P2P Chat Client
 struct client{
 
 	struct sockaddr_in addr;
-	char *group;
-	char *username;
+	char username[16];
 
 };
 
