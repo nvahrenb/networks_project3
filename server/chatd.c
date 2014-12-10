@@ -160,7 +160,6 @@ int main(int argc, char *argv[]){
 				if(strcmp(client_list[i].group, "NULL") != 0 && strcmp(client_list[i].group, newGroup) == 0){
 					// send other clients' address info
 					// format: C:c1_username:c1_address:c1_port:c2_hostname...cn_port::
-					printf("shouldn't see this\n");
 					strcat(sendBuffer, client_list[i].username);
 					strcat(sendBuffer, ":");
 					strcat(sendBuffer, inet_ntoa(client_list[i].addr.sin_addr));
