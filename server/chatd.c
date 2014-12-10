@@ -107,11 +107,31 @@ int main(int argc, char *argv[]){
 	
 			// send client list of groups
 			// format "G:group1:group2:group3::
-			strcpy(sendBuffer, "G:");			
+			strcpy(sendBuffer, "G:");
+			char used_groups[16][16];
+			for(j = 0; j < 16; j++){
+				memset(used_groups[j], 0, sizeof(used_groups[j]));
+			}
+			int isNewGroup;
 			for(i = 0; i < MAX_CLIENTS; i++){
 				if(strcmp(client_list[i].group, "NULL") != 0){
-					strcat(sendBuffer, client_list[i].group);
-					strcat(sendBuffer, ":");
+					// check if duplicate
+					isNewGroup = 1;
+					for(j = 0; j < 16; j++){
+						if (strcmp(client_list[i].group, used_groups[j]) == 0){
+							isNewGroup = 0;
+						}
+					}
+					// add to sendBuffer
+					if(isNewGroup){
+						strcat(sendBuffer, client_list[i].group);
+						strcat(sendBuffer, ":");
+						j = 0;
+						while(used_groups[j][0] != 0){
+							j++;
+						}
+						strcpy(used_groups[j], client_list[i].group);
+					}
 				}
 			}
 			strcat(sendBuffer, ":");
