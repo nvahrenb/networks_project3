@@ -178,7 +178,6 @@ int main(int argc, char *argv[]){
 	char temp[16];
 	memset((char *)&temp, 0, sizeof(temp));
 	while(recvBuffer[j] != ':' || recvBuffer[j+1] != ':'){
-		printf("%s\n",client_list[i].username);
 		while(strcmp(client_list[i].username, "EMPTY") != 0){
 			i++;
 		}
@@ -190,8 +189,6 @@ int main(int argc, char *argv[]){
 			temp[k] = recvBuffer[j];
 		}
 		strcpy(client_list[i].username, temp);
-		printf("%s\n",client_list[i].username);
-		printf("%s\n\n",temp);
 		memset((char *)&temp, 0, sizeof(temp));
 		
 		// save address
@@ -223,7 +220,7 @@ int main(int argc, char *argv[]){
 		}
 	#endif
 	
-	printf("end\n");
+	sendto(sockfd, "D::", 3, 0, (struct sockaddr *)&serverAddr, sizeof(serverAddr));
 
 	// notify other clients that this user has joined
 	

@@ -223,7 +223,7 @@ int main(int argc, char *argv[]){
 		}else if(recvBuffer[0] == 'D'){
 			// disconnect request
 			#ifdef DEBUG
-				printf("Client requested to disconnect");
+				printf("Client requested to disconnect\n");
 			#endif
 		
 			i = 0;
@@ -231,15 +231,28 @@ int main(int argc, char *argv[]){
 				i++;
 			}
 			
+			strcpy(sendBuffer, "D:");
+			strcat(sendBuffer, client_list[i].username);	
+			strcat(sendBuffer, "::");
+			
+			// notify all clients about disconnect
+			for(j = 0; j < MAX_CLIENTS; j++){ // for all clients
+				if(strcmp(client_list[j].group, client_list[i].group) == 0){ // if client is in group
+					// send disconnect message
+					//format D:username::
+					#ifdef DEBUG
+						printf("Sending %s to %s\n",sendBuffer, inet_ntoa(client_list[j].addr.sin_addr));
+					#endif
+					sendto(sockfd, sendBuffer, strlen(sendBuffer), 0, (struct sockaddr *)&client_list[j].addr.sin_addr.s_addr, sizeof(client_list[j].addr));
+				}
+			}
+			
 			strcpy(client_list[i].username, "NULL");
 			strcpy(client_list[i].group, "NULL");
-			
-			// need to notify all clients about disconnect
 		
 		// end disconnect
 		}else{
 			printf("Unknown command: %s\n",recvBuffer);
-			sleep(5);
 		}
 		
 	}
