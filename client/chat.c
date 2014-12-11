@@ -33,12 +33,14 @@ Project 3 - P2P Chat Client
 #include <string.h>
 #include <time.h>
 #include <stdint.h>
+#include <signal.h>
 #include <sys/types.h>
 #include <sys/time.h>
 #include <sys/socket.h>
 #include <netinet/in.h>
 #include <netdb.h>
 #include <arpa/inet.h>
+#include <pthread.h>
 
 #define DEBUG
 #define DPORT 9421
@@ -52,6 +54,158 @@ struct client{
 
 };
 
+struct param
+{
+	int s;
+	struct sockaddr_in addr;
+	struct client list[MAX_CLIENTS];
+	char g[64];
+};
+
+void copyList(struct client * list, struct client * target)
+{
+	int i = 0;
+	for(i = 0; i < MAX_CLIENTS; i++)
+	{
+		target[i] = list[i];
+	}
+}
+
+void * p2p(void * p_input)
+{
+	printf("inside thread\n");
+	struct param p = *(struct param * ) p_input;
+	char buffer[BUFSIZE];
+	char temp[BUFSIZE];
+	char group[64];
+	char user[64];
+	char last_user[64] = "foo";
+	uint32_t ID;
+	uint32_t last_ID = 0;
+	uint32_t mlength;
+	int recvBytes, sendBytes, i, j;
+	socklen_t len = sizeof(p.addr);
+	while(1)
+	{
+		recvBytes = recvfrom(p.s, buffer, BUFSIZE, 0, (struct sockaddr *)&(p.addr), &len);
+		if(recvBytes > 0)
+		{
+			buffer[recvBytes] = 0;
+
+			if(buffer[0] == 'D')
+			{
+				i = 0;
+				for(j = 2; buffer[j] != ':'; j++, i++)
+				{
+					temp[i] = buffer[j];
+				}
+				temp[i] = '\0';
+				for(i = 0; i < MAX_CLIENTS; i++)
+				{
+					if(strcmp(p.list[i].username, temp) == 0)
+					{
+						strcpy(p.list[i].username, "EMPTY");
+						break;
+					}
+				}
+
+				printf("A client left.  Other clients in group:\n");
+				for(i = 0; i < MAX_CLIENTS; i++)
+				{
+					if(strcmp(p.list[i].username, "EMPTY") != 0)
+					{
+						printf("%s    %s:%d\n",
+						p.list[i].username,
+						inet_ntoa(p.list[i].addr.sin_addr),
+						p.list[i].addr.sin_port);
+					}
+				}
+			}
+			else if(buffer[0] == 'T')
+			{
+				i = 0;
+				for(j = 2; buffer[j] != ':'; j++, i++)
+				{
+					temp[i] = buffer[j];
+				}
+				temp[i] = '\0';
+				strcpy(group, temp);
+				if(strcmp(group, p.g) != 0)
+				{
+					continue;
+				}
+		
+				for(i = 0; buffer[j] != ':'; j++, i++)
+				{
+					temp[i] = buffer[j];
+				}
+				temp[i] = '\0';
+				strcpy(user, temp);
+
+				for(i = 0; buffer[j] != ':'; j++, i++)
+				{
+					temp[i] = buffer[j];
+				}
+				temp[i] = '\0';
+				ID = ntohl(atoi(temp));
+
+				if((strcmp(user, last_user) == 0) && (ID == last_ID))
+				{
+					continue;
+				}
+
+				for(i = 0; buffer[j] != ':'; j++, i++)
+				{
+					temp[i] = buffer[j];
+				}
+				temp[i] = '\0';
+				mlength = ntohl(atoi(temp));
+
+				for(i = 0; i < mlength; j++, i++)
+				{
+					temp[i] = buffer[j];
+				}
+				temp[i] = '\0';
+
+				printf("From:  %s>%s\n", user, temp);
+
+				for(i = 0; i < MAX_CLIENTS; i++)
+				{
+					if(strcmp(p.list[i].username, "EMPTY") != 0)
+					{
+						sendto(p.s, buffer, strlen(buffer), 0, (struct sockaddr *)&(p.list[i].addr.sin_addr.s_addr), sizeof(p.list[i].addr));
+					}
+				}
+
+				for(i = 0; i < MAX_CLIENTS; i++)
+				{
+					if(strcmp(p.list[i].username, user) == 0)
+					{
+						j = 0;
+						break;
+					}
+					j = 1;
+				}
+				if(j == 1)
+				{
+					for(i = 0; i < MAX_CLIENTS; i++)
+					{
+						if(strcmp(p.list[i].username, "EMPTY") == 0)
+						{
+							strcpy(p.list[i].username, user);
+							p.list[i].addr.sin_addr.s_addr = p.addr.sin_addr.s_addr;
+							p.list[i].addr.sin_port = p.addr.sin_port;
+							break;
+						}
+					}
+				}
+			}
+		}
+		
+	}
+	
+}
+
 int main(int argc, char *argv[]){
 
 	// kinda temporary, want to do a list eventually but
@@ -60,6 +214,7 @@ int main(int argc, char *argv[]){
 	struct client client_list[MAX_CLIENTS];
 	srand(time(NULL));
 	struct timeval myTime;
+	struct param myParam;
 	myTime.tv_sec = 1;
 	myTime.tv_usec = 0;
 	int i, j, k;
@@ -106,23 +261,14 @@ int main(int argc, char *argv[]){
 	clientAddr.sin_port = htons(port);
 	
 	// bind socket
-	setsockopt(sockfd, SOL_SOCKET, SO_RCVTIMEO, &myTime, sizeof(myTime));
+	int optval = 1;
+	//setsockopt(sockfd, SOL_SOCKET, SO_RCVTIMEO, &myTime, sizeof(myTime));
+	setsockopt(sockfd, SOL_SOCKET, SO_REUSEADDR, &optval, sizeof(optval));
 	if( bind(sockfd, (struct sockaddr *)&clientAddr, sizeof(clientAddr)) < 0){
 		perror("unable to bind");
 		return 0;
 	}
-	
-	/*// user port override
-	if(argc >= 3){
-		port = atoi(argv[2]);
-	}
-	
-	// get host address from argument
-	struct hostent *hostn = gethostbyname(argv[1]);
-	if(hostn == 0){
-		perror("unable to get address of host");
-		return 0;
-	}*/
+
 
 	struct hostent *hostn;
 	if(argc <= 1)
@@ -282,149 +428,19 @@ int main(int argc, char *argv[]){
 					}
 				}
 			#endif
+
+			myParam.s = sockfd;
+			strcpy(myParam.g, tempBuffer1);
+			copyList(client_list, myParam.list);
 			
+			pthread_t id1;
+			if(pthread_create(&id1, NULL, p2p, (void *) &myParam) < 0)
+			{
+				perror("Could not create thread");
+				return 0;
+			}
 			while(1)
 			{
-				int serve = 0;
-				recvlen = recvfrom(sockfd, recvBuffer, BUFSIZE, 0, (struct sockaddr *)&serverAddr, &recvlen);
-
-				if(recvlen > 0)
-				{
-					serve = 1;
-				}
-					
-				if(serve == 0)
-				{
-					for(i = 0; i < MAX_CLIENTS; i++)
-					{
-						if(strcmp(client_list[i].username, "EMPTY") != 0)
-						{
-							recvlen = recvfrom(sockfd, recvBuffer, BUFSIZE, 0, (struct sockaddr *)&client_list[i].addr.sin_addr.s_addr, &recvlen);
-						}
-						if(recvlen > 0)
-						{
-							break;
-						}
-					}
-				}
-				printf("%d\n",recvlen);
-				if(recvlen > 0)
-				{
-					recvBuffer[recvlen] = 0;
-	
-					if(recvBuffer[0] == 'D')
-					{
-						i = 0;
-						for(j = 2; recvBuffer[j] != ':'; j++, i++)
-						{
-							tempBuffer2[i] = recvBuffer[j];
-						}
-						tempBuffer2[i] = '\0';
-						for(i = 0; i < MAX_CLIENTS; i++)
-						{
-							if(strcmp(client_list[i].username, tempBuffer2) == 0)
-							{
-								strcpy(client_list[i].username, "EMPTY");
-								break;
-							}
-						}
-
-						printf("A client left.  Other clients in group:\n");
-						for(i = 0; i < MAX_CLIENTS; i++)
-						{
-							if(strcmp(client_list[i].username, "EMPTY") != 0)
-							{
-								printf("%s    %s:%d\n",
-								client_list[i].username,
-								inet_ntoa(client_list[i].addr.sin_addr),
-								client_list[i].addr.sin_port);
-							}
-						}
-
-						continue;
-					}
-					else if(recvBuffer[0] == 'T')
-					{
-						i = 0;
-						for(j = 2; recvBuffer[j] != ':'; j++, i++)
-						{
-							tempBuffer2[i] = recvBuffer[j];
-						}
-						tempBuffer2[i] = '\0';
-						strcpy(group, tempBuffer2);
-						if(strcmp(group, tempBuffer1) != 0)
-						{
-							continue;
-						}
-				
-						for(i = 0; recvBuffer[j] != ':'; j++, i++)
-						{
-							tempBuffer2[i] = recvBuffer[j];
-						}
-						tempBuffer2[i] = '\0';
-						strcpy(user, tempBuffer2);
-
-						for(i = 0; recvBuffer[j] != ':'; j++, i++)
-						{
-							tempBuffer2[i] = recvBuffer[j];
-						}
-						tempBuffer2[i] = '\0';
-						mID = ntohl(atoi(tempBuffer2));
-
-						if((strcmp(user, lastUser) == 0) && (mID == last_mID))
-						{
-							continue;
-						}
-
-						for(i = 0; recvBuffer[j] != ':'; j++, i++)
-						{
-							tempBuffer2[i] = recvBuffer[j];
-						}
-						tempBuffer2[i] = '\0';
-						mLength = ntohl(atoi(tempBuffer2));
-
-						for(i = 0; i < mLength; j++, i++)
-						{
-							tempBuffer2[i] = recvBuffer[j];
-						}
-						tempBuffer2[i] = '\0';
-
-						printf("From:  %s>%s\n", user, tempBuffer2);
-
-						for(i = 0; i < MAX_CLIENTS; i++)
-						{
-							if(strcmp(client_list[i].username, "EMPTY") != 0)
-							{
-								sendto(sockfd, recvBuffer, strlen(recvBuffer), 0, (struct sockaddr *)&client_list[i].addr.sin_addr.s_addr, sizeof(client_list[i].addr));
-							}
-						}
-
-						for(i = 0; i < MAX_CLIENTS; i++)
-						{
-							if(strcmp(client_list[i].username, user) == 0)
-							{
-								j = 0;
-								break;
-							}
-							j = 1;
-						}
-						if(j == 1)
-						{
-							for(i = 0; i < MAX_CLIENTS; i++)
-							{
-								if(strcmp(client_list[i].username, "EMPTY") == 0)
-								{
-									strcpy(client_list[i].username, user);
-									client_list[i].addr.sin_addr.s_addr = clientAddr.sin_addr.s_addr;
-									client_list[i].addr.sin_port = clientAddr.sin_port;
-									break;
-								}
-							}
-						}
-						continue;					
-					}
-				}
-
 				printf("%s>", tempBuffer1);
 				fgets (tempBuffer2, BUFSIZE, stdin);
 				if(strcmp(tempBuffer2, "leave\n") == 0)
