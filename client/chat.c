@@ -192,9 +192,11 @@ int main(int argc, char *argv[]){
 				i++;
 			}
 			i++;
-			for(j = 2; input[i] != ' '; i++, j++){
+			for(j = 2, k = 0; input[i] != ' '; i++, j++, k++){
+				tempBuffer1[k] = input[i];
 				sendBuffer[j] = input[i];
 			}
+			tempBuffer1[k] = '\0';
 			sendBuffer[j] = ':';
 			i++; j++;
 			for(; input[i] && input[i] != ' ' && input[i] != '\n'; i++, j++){
@@ -227,7 +229,6 @@ int main(int argc, char *argv[]){
 				}
 
 				// save username
-				int k;
 				j++;
 				for(k = 0; recvBuffer[j] != ':'; j++, k++){
 					temp[k] = recvBuffer[j];
@@ -263,9 +264,35 @@ int main(int argc, char *argv[]){
 					}
 				}
 			#endif
+			
+			while(1)
+			{
+				printf("%s>", tempBuffer1);
+				fgets (tempBuffer2, BUFSIZE, stdin);
+				if(strcmp(input, "leave") == 0)
+				{
+					sendto(sockfd, "D::", 3, 0, (struct sockaddr *)&serverAddr, sizeof(serverAddr));
+					break;
+				}
+				else if(strcmp(input, "quit") == 0)
+				{
+					sendto(sockfd, "D::", 3, 0, (struct sockaddr *)&serverAddr, sizeof(serverAddr));
+					return 0;
+				}
+				for(i = 0; i < MAX_CLIENTS; i++)
+				{
+					if(strcmp(client_list[i].username, "EMPTY") != 0)
+					{
+						printf("%s    %s:%d\n",
+						client_list[i].username,
+						inet_ntoa(client_list[i].addr.sin_addr),
+						client_list[i].addr.sin_port);
+					}
+				}
+			}
 		}
 	
-		//sendto(sockfd, "D::", 3, 0, (struct sockaddr *)&serverAddr, sizeof(serverAddr));
+	sendto(sockfd, "D::", 3, 0, (struct sockaddr *)&serverAddr, sizeof(serverAddr));
 
 		// notify other clients that this user has joined
 	
