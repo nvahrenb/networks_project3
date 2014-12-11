@@ -18,7 +18,8 @@ Project 3 - P2P Chat Server
 #include <netdb.h>
 #include <arpa/inet.h>
 
-#define DPORT 9765
+#define DEBUG
+#define DPORT 9421
 #define BUFSIZE 4096
 #define MAX_CLIENTS 20
 
@@ -85,7 +86,7 @@ int main(int argc, char *argv[]){
 	while(1){
 	
 		#ifdef DEBUG
-			printf("Listening for connections on port %d\n",serverAddr.sin_port);
+			printf("Listening for connections on port %d\n",ntohs(serverAddr.sin_port));
 		#endif
 	
 		// begin listening for connections
