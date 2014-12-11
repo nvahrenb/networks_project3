@@ -31,7 +31,10 @@ Project 3 - P2P Chat Client
 #include <unistd.h>
 #include <errno.h>
 #include <string.h>
+#include <time.h>
+#include <stdint.h>
 #include <sys/types.h>
+#include <sys/time.h>
 #include <sys/socket.h>
 #include <netinet/in.h>
 #include <netdb.h>
@@ -54,6 +57,9 @@ int main(int argc, char *argv[]){
 	// i'll add that after we make sure everything else
 	// works
 	struct client client_list[MAX_CLIENTS];
+	srand(time(NULL));
+	struct timeval myTime;
+	myTime.tv_sec = 10;
 	int i, j, k;
 	for(i = 0; i < MAX_CLIENTS; i++){
 		client_list[i].addr.sin_family = AF_INET;
@@ -67,7 +73,14 @@ int main(int argc, char *argv[]){
 	char sendBuffer[BUFSIZE];
 	char tempBuffer1[BUFSIZE];
 	char tempBuffer2[BUFSIZE];
+	char username[BUFSIZE];
 	char input[64];
+	char user[64];
+	char lastUser[64] = "foo";
+	char group[64];
+	uint32_t mID;
+	uint32_t  last_mID = 1337;
+	uint32_t  mLength;
 	int recvlen;
 	int port = DPORT;
 	
@@ -91,6 +104,7 @@ int main(int argc, char *argv[]){
 	clientAddr.sin_port = htons(port);
 	
 	// bind socket
+	setsockopt(sockfd, SOL_SOCKET, SO_RCVTIMEO, &myTime, sizeof(myTime));
 	if( bind(sockfd, (struct sockaddr *)&clientAddr, sizeof(clientAddr)) < 0){
 		perror("unable to bind");
 		return 0;
@@ -199,9 +213,11 @@ int main(int argc, char *argv[]){
 			tempBuffer1[k] = '\0';
 			sendBuffer[j] = ':';
 			i++; j++;
-			for(; input[i] && input[i] != ' ' && input[i] != '\n'; i++, j++){
+			for(k = 0; input[i] && input[i] != ' ' && input[i] != '\n'; i++, j++, k++){
 				sendBuffer[j] = input[i];
+				username[k] = input[i];
 			}
+			username[k] = '\0';
 			sendBuffer[j] = ':';
 			sendBuffer[j+1] = ':';
 	
@@ -267,6 +283,121 @@ int main(int argc, char *argv[]){
 			
 			while(1)
 			{
+				recvlen = recvfrom(sockfd, recvBuffer, BUFSIZE, 0, (struct sockaddr *)&clientAddr, &recvlen);
+				recvBuffer[recvlen] = 0;
+	
+				if(recvBuffer[0] == 'D')
+				{
+					i = 0;
+					for(j = 2; recvBuffer[j] != ':'; j++, i++)
+					{
+						tempBuffer2[i] = recvBuffer[j];
+					}
+					tempBuffer2[i] = '\0';
+					for(i = 0; i < MAX_CLIENTS; i++)
+					{
+						if(strcmp(client_list[i].username, tempBuffer2) == 0)
+						{
+							strcpy(client_list[i].username, "EMPTY");
+							break;
+						}
+					}
+
+					printf("A client left.  Other clients in group:\n");
+					for(i = 0; i < MAX_CLIENTS; i++)
+					{
+						if(strcmp(client_list[i].username, "EMPTY") != 0)
+						{
+							printf("%s    %s:%d\n",
+							client_list[i].username,
+							inet_ntoa(client_list[i].addr.sin_addr),
+							client_list[i].addr.sin_port);
+						}
+					}
+
+					continue;
+				}
+				else if(recvBuffer[0] == 'T')
+				{
+					i = 0;
+					for(j = 2; recvBuffer[j] != ':'; j++, i++)
+					{
+						tempBuffer2[i] = recvBuffer[j];
+					}
+					tempBuffer2[i] = '\0';
+					strcpy(group, tempBuffer2);
+					if(strcmp(group, tempBuffer1) != 0)
+					{
+						continue;
+					}
+				
+					for(i = 0; recvBuffer[j] != ':'; j++, i++)
+					{
+						tempBuffer2[i] = recvBuffer[j];
+					}
+					tempBuffer2[i] = '\0';
+					strcpy(user, tempBuffer2);
+
+					for(i = 0; recvBuffer[j] != ':'; j++, i++)
+					{
+						tempBuffer2[i] = recvBuffer[j];
+					}
+					tempBuffer2[i] = '\0';
+					mID = ntohl(atoi(tempBuffer2));
+
+					if((strcmp(user, lastUser) == 0) && (mID == last_mID))
+					{
+						continue;
+					}
+
+					for(i = 0; recvBuffer[j] != ':'; j++, i++)
+					{
+						tempBuffer2[i] = recvBuffer[j];
+					}
+					tempBuffer2[i] = '\0';
+					mLength = ntohl(atoi(tempBuffer2));
+
+					for(i = 0; i < mLength; j++, i++)
+					{
+						tempBuffer2[i] = recvBuffer[j];
+					}
+					tempBuffer2[i] = '\0';
+
+					printf("From:  %s>%s\n", user, tempBuffer2);
+
+					for(i = 0; i < MAX_CLIENTS; i++)
+					{
+						if(strcmp(client_list[i].username, "EMPTY") != 0)
+						{
+							sendto(sockfd, recvBuffer, strlen(recvBuffer), 0, (struct sockaddr *)&client_list[i].addr.sin_addr.s_addr, sizeof(client_list[i].addr));
+						}
+					}
+
+					for(i = 0; i < MAX_CLIENTS; i++)
+					{
+						if(strcmp(client_list[i].username, user) == 0)
+						{
+							j = 0;
+							break;
+						}
+						j = 1;
+					}
+					if(j == 1)
+					{
+						for(i = 0; i < MAX_CLIENTS; i++)
+						{
+							if(strcmp(client_list[i].username, "EMPTY") == 0)
+							{
+								strcpy(client_list[i].username, user);
+								client_list[i].addr.sin_addr.s_addr = clientAddr.sin_addr.s_addr;
+								client_list[i].addr.sin_port = clientAddr.sin_port;
+								break;
+							}
+						}
+					}
+					continue;					
+				}
+
 				printf("%s>", tempBuffer1);
 				fgets (tempBuffer2, BUFSIZE, stdin);
 				if(strcmp(input, "leave") == 0)
@@ -277,23 +408,86 @@ int main(int argc, char *argv[]){
 				else if(strcmp(input, "quit") == 0)
 				{
 					sendto(sockfd, "D::", 3, 0, (struct sockaddr *)&serverAddr, sizeof(serverAddr));
+					close(sockfd);
 					return 0;
 				}
-				for(i = 0; i < MAX_CLIENTS; i++)
+				else if(strcmp(input, "list") == 0)
 				{
-					if(strcmp(client_list[i].username, "EMPTY") != 0)
-					{
-						printf("%s    %s:%d\n",
-						client_list[i].username,
-						inet_ntoa(client_list[i].addr.sin_addr),
-						client_list[i].addr.sin_port);
+					strcpy(sendBuffer,"L:");
+					#ifdef DEBUG
+						printf("Sending to server: %s\n",sendBuffer);
+					#endif
+					int sentBytes = sendto(sockfd, sendBuffer, strlen(sendBuffer), 0, (struct sockaddr *)&serverAddr, sizeof(serverAddr));
+	
+					// listen for response - list of groups
+					recvlen = recvfrom(sockfd, recvBuffer, BUFSIZE, 0, (struct sockaddr *)&serverAddr, &len);
+					recvBuffer[recvlen] = 0;
+					#ifdef DEBUG
+						printf("Received response: %s\n",recvBuffer);
+					#endif
+	
+					// parse response and print to screen
+					//printf("Current groups:\n");
+					for(i = 2; recvBuffer[i]; i++){
+						if(recvBuffer[i] == ':'){
+							printf("\n");
+						}else{
+							printf("%c",recvBuffer[i]);
+						}
 					}
+					continue;
+				}
+				else if(strcmp(input, "join") == 0)
+				{
+					printf("Please exit this group first.\n");
+					continue;
+				}
+				else if(strcmp(input, "send") == 0)
+				{
+					printf(">");
+					fgets (tempBuffer2, BUFSIZE, stdin);
+					strcpy(sendBuffer, "T:");
+					strcat(sendBuffer, tempBuffer1);
+					strcat(sendBuffer, username);
+					mID = htonl(rand()%100);
+					char *temp1 = malloc(6*sizeof(char));
+					sprintf(temp1,"%d",mID);
+					strcat(sendBuffer, temp1);
+					free(temp1);
+					mLength = htonl(strlen(tempBuffer2));
+					char *temp2 = malloc(6*sizeof(char));
+					sprintf(temp2,"%d",mLength);
+					strcat(sendBuffer, temp2);
+					free(temp2);
+					strcat(sendBuffer, tempBuffer2);
+					sendBuffer[strlen(sendBuffer)] = '\0';
+					
+					for(i = 0; i < MAX_CLIENTS; i++)
+					{
+						if(strcmp(client_list[i].username, "EMPTY") != 0)
+						{
+							sendto(sockfd, sendBuffer, strlen(sendBuffer), 0, (struct sockaddr *)&client_list[i].addr.sin_addr.s_addr, sizeof(client_list[i].addr));
+						}
+					}
+					continue;
+				}
+				else
+				{
+					printf("Invalid command.\n");
+					continue;
 				}
 			}
 		}
-	
-	sendto(sockfd, "D::", 3, 0, (struct sockaddr *)&serverAddr, sizeof(serverAddr));
 
+		else if(strcmp(input, "quit") == 0)
+		{
+			close(sockfd);
+			return 0;
+		}
+		else
+		{
+			printf("Invalid command.\n");
+		}
 		// notify other clients that this user has joined
 	
 		// begin chat loop
