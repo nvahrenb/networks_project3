@@ -67,6 +67,7 @@ int main(int argc, char *argv[]){
 	char sendBuffer[BUFSIZE];
 	char tempBuffer1[BUFSIZE];
 	char tempBuffer2[BUFSIZE];
+	char input[64];
 	int recvlen;
 	int port = DPORT;
 	
@@ -138,8 +139,6 @@ int main(int argc, char *argv[]){
 		{
 			port = DPORT;
 		}
-		
-		
 	}
 	
 	// set server address info
@@ -152,116 +151,123 @@ int main(int argc, char *argv[]){
 	#endif
 	
 	// request list from server
-	strcpy(sendBuffer,"L:");
-	#ifdef DEBUG
-		printf("Sending to server: %s\n",sendBuffer);
-	#endif
-	int sentBytes = sendto(sockfd, sendBuffer, strlen(sendBuffer), 0, (struct sockaddr *)&serverAddr, sizeof(serverAddr));
+	while(1)
+	{
+		printf("P2PChat>");
+		fgets (input, 64, stdin);
+		if(strcmp(input, "list") == 0)
+		{
+			strcpy(sendBuffer,"L:");
+			#ifdef DEBUG
+				printf("Sending to server: %s\n",sendBuffer);
+			#endif
+			int sentBytes = sendto(sockfd, sendBuffer, strlen(sendBuffer), 0, (struct sockaddr *)&serverAddr, sizeof(serverAddr));
 	
-	// listen for response - list of groups
-	recvlen = recvfrom(sockfd, recvBuffer, BUFSIZE, 0, (struct sockaddr *)&serverAddr, &len);
-	recvBuffer[recvlen] = 0;
-	#ifdef DEBUG
-		printf("Received response: %s\n",recvBuffer);
-	#endif
+			// listen for response - list of groups
+			recvlen = recvfrom(sockfd, recvBuffer, BUFSIZE, 0, (struct sockaddr *)&serverAddr, &len);
+			recvBuffer[recvlen] = 0;
+			#ifdef DEBUG
+				printf("Received response: %s\n",recvBuffer);
+			#endif
 	
-	// parse response and print to screen
-	printf("Current groups:\n");
-	for(i = 2; recvBuffer[i]; i++){
-		if(recvBuffer[i] == ':'){
-			printf("\n");
-		}else{
-			printf("%c",recvBuffer[i]);
-		}
-	}
-	// get user input
-	char input[64];
-	printf("Usage: join group username\n > ");
-	fgets (input, 64, stdin);
-	printf("input: %s\n",input);
-	strcpy(sendBuffer, "J:");
-	i = 0;
-	while(input[i] != ' '){
-		i++;
-	}
-	i++;
-	for(j = 2; input[i] != ' '; i++, j++){
-		sendBuffer[j] = input[i];
-	}
-	sendBuffer[j] = ':';
-	i++; j++;
-	for(; input[i] && input[i] != ' ' && input[i] != '\n'; i++, j++){
-		sendBuffer[j] = input[i];
-	}
-	sendBuffer[j] = ':';
-	sendBuffer[j+1] = ':';
-	
-	// request join
-	#ifdef DEBUG
-		printf("Sending to server: %s\n",sendBuffer);
-	#endif
-	sendto(sockfd, sendBuffer, strlen(sendBuffer), 0, (struct sockaddr *)&serverAddr, sizeof(serverAddr));
-	
-	
-	// listen for response
-	recvlen = recvfrom(sockfd, recvBuffer, BUFSIZE, 0, (struct sockaddr *)&clientAddr, &recvlen);
-	recvBuffer[recvlen] = 0;
-	#ifdef DEBUG
-		printf("Received response: %s\n", recvBuffer);
-	#endif
-	
-	// save list of clients
-	i = 0; j = 1;
-	char temp[16];
-	memset((char *)&temp, 0, sizeof(temp));
-	while(recvBuffer[j] != ':' || recvBuffer[j+1] != ':'){
-		while(strcmp(client_list[i].username, "EMPTY") != 0){
-			i++;
-		}
-
-		// save username
-		int k;
-		j++;
-		for(k = 0; recvBuffer[j] != ':'; j++, k++){
-			temp[k] = recvBuffer[j];
-		}
-		strcpy(client_list[i].username, temp);
-		memset((char *)&temp, 0, sizeof(temp));
-		
-		// save address
-		j++;
-		for(k = 0; recvBuffer[j] != ':'; j++, k++){
-			temp[k] = recvBuffer[j];
-		}
-		inet_aton(temp, &client_list[i].addr.sin_addr);
-		memset((char *)&temp, 0, sizeof(temp));
-		
-		// save port
-		j++;
-		for(k = 0; recvBuffer[j] != ':'; j++, k++){
-			temp[k] = recvBuffer[j];
-		}
-		client_list[i].addr.sin_port = atoi(temp);
-		memset((char *)&temp, 0, sizeof(temp));
-	}
-	
-	#ifdef DEBUG
-		printf("Other clients in group:\n");
-		for(i = 0; i < MAX_CLIENTS; i++){
-			if(strcmp(client_list[i].username, "EMPTY") != 0){
-				printf("%s    %s:%d\n",
-				client_list[i].username,
-				inet_ntoa(client_list[i].addr.sin_addr),
-				client_list[i].addr.sin_port);
+			// parse response and print to screen
+			//printf("Current groups:\n");
+			for(i = 2; recvBuffer[i]; i++){
+				if(recvBuffer[i] == ':'){
+					printf("\n");
+				}else{
+					printf("%c",recvBuffer[i]);
+				}
 			}
 		}
-	#endif
+		else if(strcmp(input, "join") == 0
+		// get user input
+		printf("Usage: join group username\n > ");
+		fgets (input, 64, stdin);
+		printf("input: %s\n",input);
+		strcpy(sendBuffer, "J:");
+		i = 0;
+		while(input[i] != ' '){
+			i++;
+		}
+		i++;
+		for(j = 2; input[i] != ' '; i++, j++){
+			sendBuffer[j] = input[i];
+		}
+		sendBuffer[j] = ':';
+		i++; j++;
+		for(; input[i] && input[i] != ' ' && input[i] != '\n'; i++, j++){
+			sendBuffer[j] = input[i];
+		}
+		sendBuffer[j] = ':';
+		sendBuffer[j+1] = ':';
 	
-	//sendto(sockfd, "D::", 3, 0, (struct sockaddr *)&serverAddr, sizeof(serverAddr));
+		// request join
+		#ifdef DEBUG
+			printf("Sending to server: %s\n",sendBuffer);
+		#endif
+		sendto(sockfd, sendBuffer, strlen(sendBuffer), 0, (struct sockaddr *)&serverAddr, sizeof(serverAddr));
+	
+	
+		// listen for response
+		recvlen = recvfrom(sockfd, recvBuffer, BUFSIZE, 0, (struct sockaddr *)&clientAddr, &recvlen);
+		recvBuffer[recvlen] = 0;
+		#ifdef DEBUG
+			printf("Received response: %s\n", recvBuffer);
+		#endif
+	
+		// save list of clients
+		i = 0; j = 1;
+		char temp[16];
+		memset((char *)&temp, 0, sizeof(temp));
+		while(recvBuffer[j] != ':' || recvBuffer[j+1] != ':'){
+			while(strcmp(client_list[i].username, "EMPTY") != 0){
+				i++;
+			}
 
-	// notify other clients that this user has joined
+			// save username
+			int k;
+			j++;
+			for(k = 0; recvBuffer[j] != ':'; j++, k++){
+				temp[k] = recvBuffer[j];
+			}
+			strcpy(client_list[i].username, temp);
+			memset((char *)&temp, 0, sizeof(temp));
+		
+			// save address
+			j++;
+			for(k = 0; recvBuffer[j] != ':'; j++, k++){
+				temp[k] = recvBuffer[j];
+			}
+			inet_aton(temp, &client_list[i].addr.sin_addr);
+			memset((char *)&temp, 0, sizeof(temp));
+		
+			// save port
+			j++;
+			for(k = 0; recvBuffer[j] != ':'; j++, k++){
+				temp[k] = recvBuffer[j];
+			}
+			client_list[i].addr.sin_port = atoi(temp);
+			memset((char *)&temp, 0, sizeof(temp));
+		}
 	
-	// begin chat loop
+		#ifdef DEBUG
+			printf("Other clients in group:\n");
+			for(i = 0; i < MAX_CLIENTS; i++){
+				if(strcmp(client_list[i].username, "EMPTY") != 0){
+					printf("%s    %s:%d\n",
+					client_list[i].username,
+					inet_ntoa(client_list[i].addr.sin_addr),
+					client_list[i].addr.sin_port);
+				}
+			}
+		#endif
 	
+		//sendto(sockfd, "D::", 3, 0, (struct sockaddr *)&serverAddr, sizeof(serverAddr));
+
+		// notify other clients that this user has joined
+	
+		// begin chat loop
+	}
 	
 }
