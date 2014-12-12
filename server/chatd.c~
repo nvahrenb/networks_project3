@@ -18,7 +18,7 @@ Project 3 - P2P Chat Server
 #include <netdb.h>
 #include <arpa/inet.h>
 
-#define DEBUG
+//#define DEBUG
 #define DPORT 9421
 #define BUFSIZE 4096
 #define MAX_CLIENTS 20
@@ -240,7 +240,7 @@ int main(int argc, char *argv[]){
 					#ifdef DEBUG
 						printf("Sending %s to %s\n",sendBuffer, inet_ntoa(client_list[j].addr.sin_addr));
 					#endif
-					sendto(sockfd, sendBuffer, strlen(sendBuffer), 0, (struct sockaddr *)&client_list[j].addr.sin_addr.s_addr, sizeof(client_list[j].addr));
+					sendto(sockfd, sendBuffer, strlen(sendBuffer), 0, (struct sockaddr *)&client_list[j].addr, sizeof(client_list[j].addr));
 				}
 			}
 			

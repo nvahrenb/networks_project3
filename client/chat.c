@@ -42,8 +42,7 @@ Project 3 - P2P Chat Client
 #include <arpa/inet.h>
 #include <sys/select.h>
 
-#define DEBUG
-#define STDIN 0
+//#define DEBUG
 #define DPORT 9421
 #define BUFSIZE 4096
 #define MAX_CLIENTS 20
@@ -166,11 +165,12 @@ int main(int argc, char *argv[]){
 		printf("Connecting to server at %s (%s) on port %d\n",argv[1],inet_ntoa(serverAddr.sin_addr),port);
 	#endif
 	
+	printf("P2PChat online.\n");
+	
 	int maxfd = fileno(stdin);
 	if(maxfd < sockfd) maxfd = sockfd;
 	int p2p;
 	// request list from server
-	printf("%s>", header);
 	while(1)
 	{
 		memset(tempBuffer1, '\0', BUFSIZE);
@@ -198,10 +198,8 @@ int main(int argc, char *argv[]){
 			if(recvlen > 0)
 			{
 				tempBuffer1[recvlen] = 0;
-				printf("%s", tempBuffer1);
 				if(tempBuffer1[0] == 'D')
 				{
-					printf("someone left");
 					i = 0;
 					for(j = 2; tempBuffer1[j] != ':'; j++, i++)
 					{
@@ -240,7 +238,6 @@ int main(int argc, char *argv[]){
 					strcpy(group, tempBuffer2);
 					if(strcmp(group, myGroup) != 0)
 					{
-						printf("group mismatch:  %s, %s, %s", group, myGroup, tempBuffer1);
 						continue;
 					}
 					j++;
@@ -250,7 +247,6 @@ int main(int argc, char *argv[]){
 					}
 					tempBuffer2[i] = '\0';
 					strcpy(user, tempBuffer2);
-					printf("%s", user);
 					j++;
 					for(i = 0; tempBuffer1[j] != ':'; j++, i++)
 					{
@@ -277,7 +273,7 @@ int main(int argc, char *argv[]){
 						}
 						tempBuffer2[i] = '\0';
 
-						printf("From:  %s>%s\n", user, tempBuffer2);
+						printf("%s > %s\n", user, tempBuffer2);
 
 						for(i = 0; i < MAX_CLIENTS; i++)
 						{
@@ -313,7 +309,6 @@ int main(int argc, char *argv[]){
 					}
 				}
 			}
-			printf("%s>", header);
 		}
 
 		if(FD_ISSET(fileno(stdin), &fds))
@@ -352,7 +347,7 @@ int main(int argc, char *argv[]){
 				}
 				
 				// get user input
-				printf("Please type: join group username\n > ");
+				printf("Please type: join group username\n");
 				fgets (input, 64, stdin);
 				//printf("input: %s\n",input);
 				strcpy(sendBuffer, "J:");
@@ -455,7 +450,6 @@ int main(int argc, char *argv[]){
 			}
 			else if((strcmp(input, "send\n") == 0) && (strcmp(header, p2pHeader) != 0))
 			{
-				printf(">");
 				fgets (tempBuffer2, BUFSIZE, stdin);
 				strcpy(sendBuffer, "T:");
 				strcat(sendBuffer, myGroup);
@@ -476,7 +470,6 @@ int main(int argc, char *argv[]){
 				free(temp2);
 				strcat(sendBuffer, tempBuffer2);
 				sendBuffer[strlen(sendBuffer)] = '\0';
-				printf("%s", sendBuffer);
 				for(i = 0; i < MAX_CLIENTS; i++)
 				{
 					if(strcmp(client_list[i].username, "EMPTY") != 0)
@@ -485,11 +478,14 @@ int main(int argc, char *argv[]){
 					}
 				}
 			}
-			else
+			else if((strcmp(input, "help\n") == 0))
+			{	
+				printf("Command List:\nlist - lists all available groups\njoin - join a group (cannot already be in group)\nleave - leave a group (must be in group)\nsend - send a message within your group (must be in group)\nquit - exit the program\nhelp - pull up a list of commands\nglist - list your group members (must be in group)\n");
+			}
+			else if(strcmp(input, "\n") != 0)
 			{
 				printf("Invalid command.\n");
 			}
-			printf("%s>", header);
 		}
 		// notify other clients that this user has joined
 	

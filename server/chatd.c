@@ -18,7 +18,7 @@ Project 3 - P2P Chat Server
 #include <netdb.h>
 #include <arpa/inet.h>
 
-#define DEBUG
+//#define DEBUG
 #define DPORT 9421
 #define BUFSIZE 4096
 #define MAX_CLIENTS 20
@@ -94,7 +94,7 @@ int main(int argc, char *argv[]){
 		memset((char *)&clientAddr, 0, sizeof(clientAddr));
 		recvlen = recvfrom(sockfd,recvBuffer,BUFSIZE,0,(struct sockaddr *)&clientAddr, &len);
 		recvBuffer[recvlen] = 0;
-		perror("recvfrom");
+		//perror("recvfrom");
 		
 		#ifdef DEBUG
 			printf("Received request: %s from %s\n",recvBuffer, inet_ntoa(clientAddr.sin_addr));
