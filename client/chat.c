@@ -94,6 +94,7 @@ int main(int argc, char *argv[]){
 	int port = DPORT;
 	
 	strcpy(header, p2pHeader);
+	strcpy(myGroup, "default");
 	#ifdef DEBUG
 		printf("Opening socket...\n");
 	#endif
@@ -172,6 +173,8 @@ int main(int argc, char *argv[]){
 	printf("%s>", header);
 	while(1)
 	{
+		memset(tempBuffer1, '\0', BUFSIZE);
+		memset(tempBuffer2, '\0', BUFSIZE);
 		myTime.tv_sec = 300;
 		myTime.tv_usec = 0;
 		FD_ZERO(&fds);
@@ -195,8 +198,10 @@ int main(int argc, char *argv[]){
 			if(recvlen > 0)
 			{
 				tempBuffer1[recvlen] = 0;
+				printf("%s", tempBuffer1);
 				if(tempBuffer1[0] == 'D')
 				{
+					printf("someone left");
 					i = 0;
 					for(j = 2; tempBuffer1[j] != ':'; j++, i++)
 					{
@@ -235,7 +240,7 @@ int main(int argc, char *argv[]){
 					strcpy(group, tempBuffer2);
 					if(strcmp(group, myGroup) != 0)
 					{
-						printf("group mismatch");
+						printf("group mismatch:  %s, %s, %s", group, myGroup, tempBuffer1);
 						continue;
 					}
 					j++;
@@ -256,6 +261,8 @@ int main(int argc, char *argv[]){
 
 					if((strcmp(user, lastUser) != 0) || (ID != last_ID))
 					{
+						strcpy(lastUser, user);
+						last_ID = ID;
 						j++;
 						for(i = 0; tempBuffer1[j] != ':'; j++, i++)
 						{
@@ -339,6 +346,10 @@ int main(int argc, char *argv[]){
 			}
 			else if((strcmp(input, "join\n") == 0) && (strcmp(header, p2pHeader) == 0))
 			{
+				for(i = 0; i < MAX_CLIENTS; i++)
+				{
+					strcpy(client_list[i].username, "EMPTY");
+				}
 				
 				// get user input
 				printf("Please type: join group username\n > ");
@@ -431,6 +442,7 @@ int main(int argc, char *argv[]){
 			{
 				sendto(sockfd, "D::", 3, 0, (struct sockaddr *)&serverAddr, sizeof(serverAddr));
 				strcpy(header, p2pHeader);
+				strcpy(myGroup, "there is no way out");
 			}
 			else if(strcmp(input, "quit\n") == 0)
 			{
@@ -441,12 +453,12 @@ int main(int argc, char *argv[]){
 				close(sockfd);
 				return 0;
 			}
-			else if(strcmp(input, "send\n") == 0)
+			else if((strcmp(input, "send\n") == 0) && (strcmp(header, p2pHeader) != 0))
 			{
 				printf(">");
 				fgets (tempBuffer2, BUFSIZE, stdin);
 				strcpy(sendBuffer, "T:");
-				strcat(sendBuffer, tempBuffer1);
+				strcat(sendBuffer, myGroup);
 				strcat(sendBuffer, ":");
 				strcat(sendBuffer, username);
 				strcat(sendBuffer, ":");
@@ -464,7 +476,7 @@ int main(int argc, char *argv[]){
 				free(temp2);
 				strcat(sendBuffer, tempBuffer2);
 				sendBuffer[strlen(sendBuffer)] = '\0';
-		
+				printf("%s", sendBuffer);
 				for(i = 0; i < MAX_CLIENTS; i++)
 				{
 					if(strcmp(client_list[i].username, "EMPTY") != 0)
