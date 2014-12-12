@@ -41,6 +41,8 @@ Project 3 - P2P Chat Client
 #include <netdb.h>
 #include <arpa/inet.h>
 #include <sys/select.h>
+#include "SDL/SDL.h"
+#include "SDL/SDL_mixer.h"
 
 //#define DEBUG
 #define DPORT 9421
@@ -91,6 +93,7 @@ int main(int argc, char *argv[]){
 	uint32_t  mLength;
 	int recvlen;
 	int port = DPORT;
+	Mix_Chunk * ding = NULL;
 	
 	strcpy(header, p2pHeader);
 	strcpy(myGroup, "default");
@@ -165,6 +168,23 @@ int main(int argc, char *argv[]){
 		printf("Connecting to server at %s (%s) on port %d\n",argv[1],inet_ntoa(serverAddr.sin_addr),port);
 	#endif
 	
+	if( SDL_Init( SDL_INIT_EVERYTHING ) < 0 )
+	{
+		perror("SDL could not initialize");
+		return 0;
+	}
+	if( Mix_OpenAudio( 44100, MIX_DEFAULT_FORMAT, 2, 2048 ) < 0 )
+	{
+		perror("SDL Mixer could not initialize");
+		return 0;
+	}
+
+	ding = Mix_LoadWAV( "./ding.wav" );
+	if(ding == NULL)
+	{
+		perror("Could not load sound effect");	
+		return 0;
+	}
 	printf("P2PChat online.\n");
 	
 	int maxfd = fileno(stdin);
@@ -220,10 +240,8 @@ int main(int argc, char *argv[]){
 					{
 						if(strcmp(client_list[i].username, "EMPTY") != 0)
 						{
-							printf("%s    %s:%d\n",
-							client_list[i].username,
-							inet_ntoa(client_list[i].addr.sin_addr),
-							client_list[i].addr.sin_port);
+							printf("%s\n",
+							client_list[i].username);
 						}
 					}
 				}
@@ -273,6 +291,7 @@ int main(int argc, char *argv[]){
 						}
 						tempBuffer2[i] = '\0';
 
+						Mix_PlayChannel( -1, ding, 0 );
 						printf("%s > %s\n", user, tempBuffer2);
 
 						for(i = 0; i < MAX_CLIENTS; i++)
@@ -445,6 +464,10 @@ int main(int argc, char *argv[]){
 				{
 					sendto(sockfd, "D::", 3, 0, (struct sockaddr *)&serverAddr, sizeof(serverAddr));
 				}
+				Mix_FreeChunk(ding);
+				ding = NULL;
+				Mix_Quit();
+				SDL_Quit();
 				close(sockfd);
 				return 0;
 			}
@@ -482,7 +505,18 @@ int main(int argc, char *argv[]){
 			{	
 				printf("Command List:\nlist - lists all available groups\njoin - join a group (cannot already be in group)\nleave - leave a group (must be in group)\nsend - send a message within your group (must be in group)\nquit - exit the program\nhelp - pull up a list of commands\nglist - list your group members (must be in group)\n");
 			}
-			else if(strcmp(input, "\n") != 0)
+			else if((strcmp(input, "glist\n") == 0) && (strcmp(header, p2pHeader) != 0))
+			{
+				for(i = 0; i < MAX_CLIENTS; i++)
+				{
+					if(strcmp(client_list[i].username, "EMPTY") != 0)
+					{
+						printf("%s\n", client_list[i].username);
+					}
+				}
+			}
+			else if(strcmp(input, "\n") == 0){}
+			else
 			{
 				printf("Invalid command.\n");
 			}
