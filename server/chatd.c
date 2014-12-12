@@ -173,7 +173,19 @@ int main(int argc, char *argv[]){
 				printf("%s\n",newUser);
 			#endif
 			
-			
+			// save this new client
+			#ifdef DEBUG
+				printf("Adding %s at %s:%d to %s\n",newUser,inet_ntoa(clientAddr.sin_addr),clientAddr.sin_port,newGroup);
+			#endif
+			i = 0;
+			while(strcmp(client_list[i].group, "NULL") != 0){
+				i++;
+			}
+			client_list[i].addr.sin_addr.s_addr = clientAddr.sin_addr.s_addr;
+			int temp_port = clientAddr.sin_port;
+			client_list[i].addr.sin_port = temp_port;
+			strcpy(client_list[i].username, newUser);
+			strcpy(client_list[i].group, newGroup);
 		
 			// send client list of others in group
 			strcpy(sendBuffer, "C:");
@@ -197,22 +209,6 @@ int main(int argc, char *argv[]){
 				printf("Sending response: %s\n",sendBuffer);
 			#endif
 			sendto(sockfd, sendBuffer, strlen(sendBuffer), 0, (struct sockaddr *)&clientAddr, sizeof(clientAddr));
-			
-	
-	
-			// save this new client
-			#ifdef DEBUG
-				printf("Adding %s at %s:%d to %s\n",newUser,inet_ntoa(clientAddr.sin_addr),clientAddr.sin_port,newGroup);
-			#endif
-			i = 0;
-			while(strcmp(client_list[i].group, "NULL") != 0){
-				i++;
-			}
-			client_list[i].addr.sin_addr.s_addr = clientAddr.sin_addr.s_addr;
-			int temp_port = clientAddr.sin_port;
-			client_list[i].addr.sin_port = temp_port;
-			strcpy(client_list[i].username, newUser);
-			strcpy(client_list[i].group, newGroup);
 	
 		free(newGroup);
 		free(newUser);
